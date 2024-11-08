@@ -10,7 +10,7 @@ on:
       layout_geometry:
         description: "voyager|moonlander|ergodox_ez"
         required: true
-        default: "voyager"
+        default: "planck/ez/glow"
 
 permissions:
   contents: write
@@ -31,7 +31,7 @@ jobs:
       - name: Download layout source
         id: download-layout-source
         run: |
-          response=$(curl --location 'https://oryx.zsa.io/graphql' --header 'Content-Type: application/json' --data '{"query":"query getLayout($hashId: String!, $revisionId: String!, $geometry: String) {layout(hashId: $hashId, geometry: $geometry, revisionId: $revisionId) {  revision { hashId, qmkVersion }}}","variables":{"hashId":"${{ github.event.inputs.layout_id }}","geometry":"${{ github.event.inputs.layout_geometry }}","revisionId":"latest"}}' | jq '.data.layout.revision | [.hashId, .qmkVersion]')
+          response=$(curl --location 'https://oryx.zsa.io/graphql' --header 'Content-Type: application/json' --data '{"query":"query getLayout($hashId: String!, $revisionId: String!) {layout(hashId: $hashId, revisionId: $revisionId) {  revision { hashId, qmkVersion }}}","variables":{"hashId":"${{ github.event.inputs.layout_id }}","revisionId":"latest"}}' | jq '.data.layout.revision | [.hashId, .qmkVersion]')
           hash_id=$(echo "${response}" | jq -r '.[0]')
           firmware_version=$(printf "%.0f" $(echo "${response}" | jq -r '.[1]'))
           
@@ -74,13 +74,8 @@ jobs:
         id: build-layout
         run: |
           # Set keyboard directory and make prefix based on firmware version
-          if [ "${{ steps.download-layout-source.outputs.firmware_version }}" -ge 24 ]; then
-            keyboard_directory="qmk_firmware/keyboards/zsa"
-            make_prefix="zsa/"
-          else
-            keyboard_directory="qmk_firmware/keyboards"
-            make_prefix=""
-          fi
+          keyboard_directory="qmk_firmware/keyboards"
+          make_prefix=""
           
           # Copy layout files to the qmk folder
           rm -rf ${keyboard_directory}/${{ github.event.inputs.layout_geometry }}/keymaps/${{ github.event.inputs.layout_id }}
